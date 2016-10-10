@@ -19,7 +19,7 @@ class BodyRockLeadConversion
 	 *
 	 * @var string
 	 **/
-	var $PAT = 'dG9rOmNkNDBhZjAyX2Q1OWJfNGQzY184YWZlX2U2MmY4ZjVkYWIyZDoxOjA=';
+	var $PAT = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
 
 
 	/**
