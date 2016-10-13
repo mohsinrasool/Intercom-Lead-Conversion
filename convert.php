@@ -1,7 +1,14 @@
+<html>
+<head>
+</head>
+<body>
 <?php
 
 include 'vendor/autoload.php';
+include 'config.php';
 include 'db_layer.php';
+
+set_time_limit(0);
 
 use Intercom\IntercomClient;
 
@@ -19,7 +26,7 @@ class BodyRockLeadConversion
 	 *
 	 * @var string
 	 **/
-	var $PAT = 'dG9rOmNkNDBhZjAyX2Q1OWJfNGQzY184YWZlX2U2MmY4ZjVkYWIyZDoxOjA=';
+	var $PAT = PAT;
 
 
 	/**
@@ -40,9 +47,9 @@ class BodyRockLeadConversion
 
 		$totalPages = null;
 		$currentPage = 1;
-		// $leads = $this->client->leads->getLeads(['created_since'=>'2']);
+		$leads = $this->client->leads->getLeads(['created_since'=>'2']);
 		// $leads = $this->client->leads->getLeads(['segment_id'=>'57f7c6d08bc828fa6fe2a963']);
-		$leads = $this->client->leads->getLeads(['email' => 'nbuckram@gmail.com']);
+		// $leads = $this->client->leads->getLeads(['email' => 'nbuckram@gmail.com']);
 		print_r($leads);
 
 
@@ -62,11 +69,11 @@ class BodyRockLeadConversion
 		}
 	}
 
-	public function convertFromDB()
+	public function convertFromDB($numThreads = 5)
 	{
 		$db = new Database('localhost','root','','bodyrock_intercom');
 
-		$dbLeads = $db->getResults('*','leads', array('contact_id'=>''));
+		$dbLeads = $db->getResults('*','leads', 'contact_id="" AND error IS NULL');
 
 		if(!$dbLeads) {
 			echo 'No lead available to convert.';
@@ -82,35 +89,57 @@ class BodyRockLeadConversion
 			// if(empty($leads->contacts))
 			// 	continue;
 
-			echo "<h1>Leads</h1>";
-			print_r($dbLead);
+			// echo "<h1>Leads</h1>";
+			// print_r($dbLead);
 			// foreach($leads->contacts as $lead) {
+			// echo "<p>";
+			// echo "Lead: ".$dbLead->email." ";
 
 				// if($contact == null)
+				try {
 					$contact = $this->client->users->getUsers(['email'=>$dbLead->email]);
+				} catch(\Exception $ex) {
+					echo "CONTACT ERROR:".$ex->getMessage()."</p>";
+					$db->query("update leads set error='".$ex->getMessage()."' where id='".$dbLead->id."'; ");
+					// exit;
+					continue;
+				}
 
-				echo "<h1>Contact</h1>";
-				print_r($contact);
+				// echo "<h1>Contact</h1>";
+				// print_r($contact);
 
-				$convertData = array("contact" => array("user_id" => $dbLead->user_id));
-				if(!empty($contact))
-					$convertData['user'] = array("user_id" => $contact->user_id);
+				$convertData = array("contact" => array("user_id" => $dbLead->id));
+				if(!empty($contact)) {
+					$convertData['user'] = array("user_id" => $contact->id);
+					// echo "Contact: ".$contact->id." ";
+				}
 
-				echo "<h1>Convert Data</h1>";
-				print_r($convertData);
+				// echo "Conversion: ".json_encode($convertData)." ";
+
+				// echo "<h1>Convert Data</h1>";
+				// print_r($convertData);
 				try {
 
-					// $response = $this->client->leads->convertLead($convertData);
+					$response = $this->client->leads->convertLead($convertData);
 
-					// if(!empty($response->id)) {
-					// 	$db->query("update leads set contact_id='".$response->id."' where id='".$dbLead->id."'; ");
-					// }
+					if(!empty($response->id)) {
+						$db->query("update leads set contact_id='".$response->id."' where id='".$dbLead->id."'; ");
+						// echo '--CONVERTED!--';
+					}
 
-				}catch(\Exception $ex) {
-
+					$db->query("update leads set response='".json_encode($response)."', request='".json_encode($convertData)."' where id='".$dbLead->id."'; ");
+				} catch(\Exception $ex) {
+					// echo "<h1>Conversion Response</h1>";
+					// print_r($response);
+					echo "CONVERSION ERROR:".$ex->getMessage()."</p>";
+					$db->query("update leads set error='".json_encode($ex->getMessage())."', request='".json_encode($convertData)."' where id='".$dbLead->id."'; ");
+					// exit;
 				}
-				echo "<h1>Conversion Response</h1>";
-				// print_r($response);
+			// echo "</p>";
+			// flush();
+			// exit;
+			// exit;
+			if($i >= 1000)
 				exit;
 			// }
 		}
@@ -121,6 +150,10 @@ class BodyRockLeadConversion
 
 
 $conv = new BodyRockLeadConversion();
-$conv->convertFromDB();
+$conv->fetchAndConvert();
 
 ?>
+
+</body>
+</html>
+
