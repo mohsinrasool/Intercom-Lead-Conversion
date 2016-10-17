@@ -47,7 +47,7 @@ class BodyRockLeadConversion
 
 		$totalPages = null;
 		$currentPage = 1;
-		$leads = $this->client->leads->getLeads(['created_since'=>'2']);
+		$leads = $this->client->leads->getLeads(['created_since'=>'1']);
 		// $leads = $this->client->leads->getLeads(['segment_id'=>'57f7c6d08bc828fa6fe2a963']);
 		// $leads = $this->client->leads->getLeads(['email' => 'nbuckram@gmail.com']);
 		print_r($leads);
