@@ -45,28 +45,81 @@ class BodyRockLeadConversion
 	{
 		$db = new Database('localhost','root','','bodyrock_intercom');
 
-		$totalPages = null;
-		$currentPage = 1;
-		$leads = $this->client->leads->getLeads(['created_since'=>'1']);
-		// $leads = $this->client->leads->getLeads(['segment_id'=>'57f7c6d08bc828fa6fe2a963']);
-		// $leads = $this->client->leads->getLeads(['email' => 'nbuckram@gmail.com']);
-		print_r($leads);
+
+		$currentPage = 0;
+		$errorCount = 0;
+		$emptyPages = 0;
+		$isEmptyPage = true;
+		do {
+			$currentPage++;
+
+			try {
+				$leads = $this->client->leads->getLeads(['created_since'=>'1','page'=>$currentPage]);
+			}
+			catch(\Exception $ex) {
+				echo "Current Page: ". $currentPage."\n <br/>";
+				echo $ex->getMessage();
+				break;
+			}
 
 
-		foreach ($leads->contacts as $lead) {
-			if(empty($lead->email))
-				continue;
+			foreach ($leads->contacts as $lead) {
 
-			$record = array(
-				'id' => $lead->id,
-				'user_id' => $lead->user_id,
-				'email' => $lead->email,
-				'name' => $lead->name,
-				'created_at' => $lead->created_at,
-				'anonymous' => $lead->anonymous,
+				$response = null;
+
+				if(empty($lead->email))
+					continue;
+				else if($db->isExists('cron_log','email',$lead->email, ' anonymous = 0 ')){
+					// skip if an exception was occured for this email
+					continue;
+
+				} else {
+					$isEmptyPage = false;
+					try {
+
+						$convertData = array('contact'=>array('user_id'=>$lead->user_id),"user" => array( "email" => $lead->email ));
+						$response = $this->client->leads->convertLead($convertData);
+
+					} catch(\Exception $ex) {
+
+						$record = array(
+							'id' => $lead->id,
+							'user_id' => $lead->user_id,
+							'email' => $lead->email,
+							'name' => $lead->name,
+							'created_at' => $lead->created_at,
+							'anonymous' => 0,
+							'response' => $ex->getMessage().json_encode($response),
+						);
+						$db->saveRecord($record, 'cron_log');
+
+						$errorCount++;
+
+						echo "Exception for: ". $lead->email." at page # ". $currentPage."\n <br/>";
+						echo $ex->getMessage();
+						continue;
+
+					}
+				}
+
+				$record = array(
+					'id' => $lead->id,
+					'user_id' => $lead->user_id,
+					'email' => $lead->email,
+					'name' => $lead->name,
+					'created_at' => $lead->created_at,
+					'anonymous' => 1,
+					'response' => json_encode($response),
 				);
-			$db->saveRecord($record, 'cron_log');
-		}
+				$db->saveRecord($record, 'cron_log');
+				// break;
+			}
+			if($errorCount > 10)
+				break;
+			if($emptyPages++ > 5)
+				break;
+			// break;
+		} while(isset($leads->pages) && $currentPage < $leads->pages->total_pages);
 	}
 
 	public function convertFromDB($numThreads = 5)

@@ -1,7 +1,7 @@
 <html>
 <head>
 </head>
-<body onload="window.location.reload();" >
+<body  onload="window.location.reload();">
 <?php
 
 include 'vendor/autoload.php';
@@ -98,18 +98,18 @@ class BodyRockLeadConversion
 
 			// echo ($id);
 			// exit;
-			if(empty($_GET['sort']))
-				return;
+			// if(empty($_GET['sort']))
+			// 	return;
 
 			$db->query("SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;");
-			$dbLeads = $db->getResults('*','leads_new', ' in_process = 0 ','nid '.$_GET['sort'], 0, 1);
-			// $dbLeads = $db->getResults('*','leads_new', ' email =  "sherrys@cinci.rr.com" and in_process = 0 ',NULL, 0, 1);
+			$dbLeads = $db->getResults('*','leads_part2', ' in_process = 0 ',' rand() ', 0, 1);
+			// $dbLeads = $db->getResults('*','leads_part2', ' email =  "sherrys@cinci.rr.com" and in_process = 0 ',NULL, 0, 1);
 			$db->query("COMMIT;");
 
 			// print_r($db->numRecords($dbLeads));
 			if($db->numRecords($dbLeads) == 0) {
 
-				// $dbLeads = $db->getResults('*','leads_new', ' in_process = 0 ',NULL, 0, 1);
+				// $dbLeads = $db->getResults('*','leads_part2', ' in_process = 0 ',NULL, 0, 1);
 				// if($db->numRecords($dbLeads) == 0) {
 					echo 'x';
 					continue;
@@ -121,7 +121,7 @@ class BodyRockLeadConversion
 			// print_r($dbLead);
 			// print_r($db->numRecords($dbLeads));
 			// return;
-			$db->query("update leads_new set in_process='1' where nid='".$dbLead->nid."'; ");
+			$db->query("update leads_part2 set in_process='1' where id='".$dbLead->id."'; ");
 
 			// for ($i=0; $i < $db->numRecords($dbLeads); $i++) {
 
@@ -145,12 +145,12 @@ class BodyRockLeadConversion
 
 					// 	if(stripos($ex->getMessage(), '404 Not Found') === false ) {
 					// 		echo "CONTACT ERROR:".$ex->getMessage()."</p>";
-					// 		// $db->query("update leads_new set error='".$ex->getMessage()."', in_process='2'  where nid='".$dbLead->nid."'; ");
+					// 		// $db->query("update leads_part2 set error='".$ex->getMessage()."', in_process='2'  where nid='".$dbLead->nid."'; ");
 					// 		// exit;
 					// 		continue;
 					// 	}
 					// 	else{
-					// 		// $db->query("update leads_new set adjustment='404'  where nid='".$dbLead->nid."'; ");
+					// 		// $db->query("update leads_part2 set adjustment='404'  where nid='".$dbLead->nid."'; ");
 					// 	}
 					// }
 
@@ -169,14 +169,14 @@ class BodyRockLeadConversion
 						$response = $this->client->leads->convertLead($convertData);
 
 						if(!empty($response->id)) {
-							$db->query("update leads_new set contact_id='".$response->id."', in_process='3'  where nid='".$dbLead->nid."'; ");
+							$db->query("update leads_part2 set contact_id='".$response->id."', in_process='3'  where id='".$dbLead->id."'; ");
 							echo '.';
 						}
 
-						$db->query("update leads_new set response='".json_encode($response)."', request='".json_encode($convertData)."', in_process='3'  where nid='".$dbLead->nid."'; ");
+						$db->query("update leads_part2 set response='".json_encode($response)."', request='".json_encode($convertData)."', in_process='3'  where id='".$dbLead->id."'; ");
 					} catch(\Exception $ex) {
 						echo "CONVERSION ERROR:".$ex->getMessage()."</p>";
-						$db->query("update leads_new set error='".json_encode($ex->getMessage())."', request='".json_encode($convertData)."', in_process='3'  where nid='".$dbLead->nid."'; ");
+						$db->query("update leads_part2 set error='".json_encode($ex->getMessage())."', request='".json_encode($convertData)."', in_process='3'  where id='".$dbLead->id."'; ");
 						// exit;
 					}
 					// echo "<h1>Conversion Response</h1>";
